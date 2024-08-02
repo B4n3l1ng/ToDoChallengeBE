@@ -1,5 +1,6 @@
 require('dotenv').config();
 const Hapi = require('@hapi/hapi');
+require('./db/index.js');
 
 const init = async () => {
   const server = Hapi.server({
