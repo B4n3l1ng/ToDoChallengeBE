@@ -4,6 +4,7 @@ const Inert = require('@hapi/inert');
 const Vision = require('@hapi/vision');
 const HapiSwagger = require('hapi-swagger');
 const Pack = require('./package');
+const laabr = require('laabr');
 require('./db/index.js');
 
 const ToDoRoutes = require('./routes/todo.routes');
@@ -24,6 +25,10 @@ const init = async () => {
   };
 
   await server.register([
+    {
+      plugin: laabr,
+      options: {},
+    },
     Inert,
     Vision,
     {
