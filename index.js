@@ -6,6 +6,9 @@ const HapiSwagger = require('hapi-swagger');
 const Pack = require('./package');
 require('./db/index.js');
 
+const ToDoRoutes = require('./routes/todo.routes');
+const todoRoutes = require('./routes/todo.routes');
+
 const init = async () => {
   const server = Hapi.server({
     port: process.env.PORT || 5005,
@@ -29,13 +32,7 @@ const init = async () => {
     },
   ]);
 
-  server.route({
-    method: 'GET',
-    path: '/',
-    handler: (request, h) => {
-      return h.response({ message: 'Hello World' }).code(200);
-    },
-  });
+  server.route(todoRoutes);
 
   await server.start();
   console.log(`Server running on ${server.info.uri}`);
