@@ -9,7 +9,7 @@ const todoRoutes = [
     options: {
       description: 'Creates a task.',
       notes: 'Creates a task item, using the information passed in the payload.',
-      tags: ['api'],
+      tags: ['api', 'todos'],
       validate: {
         payload: todoPost.request,
       },
@@ -40,7 +40,7 @@ const todoRoutes = [
     options: {
       description: 'Gets an array of task items.',
       notes: 'Gets an array of task items, depending on the query fields passed.',
-      tags: ['api'],
+      tags: ['api', 'todos'],
       validate: {
         query: todoGet.query,
       },
@@ -79,7 +79,7 @@ const todoRoutes = [
     options: {
       description: 'Deletes a task.',
       notes: 'Accepts a parameter, the id of the task, and deletes it from the database.',
-      tags: ['api'],
+      tags: ['api', 'todo'],
       validate: {
         params: todoDel.parameters,
       },

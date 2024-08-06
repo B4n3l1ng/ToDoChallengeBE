@@ -7,13 +7,17 @@ const Pack = require('./package');
 const laabr = require('laabr');
 require('./db/index.js');
 
-const ToDoRoutes = require('./routes/todo.routes');
 const todoRoutes = require('./routes/todo.routes');
 
 const init = async () => {
   const server = Hapi.server({
     port: process.env.PORT || 5005,
     host: process.env.HOST || 'localhost',
+    routes: {
+      cors: {
+        origin: [process.env.FRONTEND_URL],
+      },
+    },
   });
 
   const swaggerOptions = {
@@ -22,6 +26,11 @@ const init = async () => {
       version: Pack.version,
     },
     documentationPath: '/docs',
+    grouping: 'tags',
+    tags: [
+      { name: 'todos', description: 'Multiple task data' },
+      { name: 'todo', description: 'Single task data' },
+    ],
   };
 
   await server.register([
