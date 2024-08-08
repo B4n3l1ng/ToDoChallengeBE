@@ -26,23 +26,29 @@ const todoGet = {
   }).label('Todo query options'),
   response: Joi.object({
     todos: Joi.array().items(todo).label('Array of Tasks'),
-  }).label('Get tasks success response'),
+  }).label('Task GET request success'),
 };
 
 const todoPost = {
   request: Joi.object({
     description: Joi.string().min(1).required().example('Buy milk at the store.').description('Task description.'),
-  }).label('Task creation payload'),
+  }).label('Task POST request payload'),
   response: Joi.object({
     newTodo: todo,
-  }).label('Task creation success response'),
+  }).label('Task POST request success'),
 };
+
+const notFoundResponse = Joi.object({
+  statusCode: Joi.number().example(404).required(),
+  error: Joi.string().example('Not Found').required(),
+  message: Joi.string().example('Task not found.').required(),
+}).label('Error Not found response');
 
 const todoDel = {
   parameters: Joi.object({
     id: Joi.string().required().min(36).max(36).example('db28b3f7-13c2-4333-9c13-e6bb1bc5d107').description('Unique identifier of a task to delete.'),
   }),
-  success: undefined,
+  response: { success: undefined, notFound: notFoundResponse },
 };
 
 const todoPatch = {
@@ -51,8 +57,16 @@ const todoPatch = {
     description: todoDescription,
   })
     .or('state', 'description')
-    .label('Task Patch request body'),
-  response: todo,
+    .label('Task PATCH request payload'),
+  response: {
+    success: Joi.object({ updatedTask: todo }).label('Task PATCH request success'),
+    notFound: notFoundResponse,
+    badRequest: Joi.object({
+      statusCode: Joi.number().example(400).required(),
+      error: Joi.string().example('Bad Request').required(),
+      message: Joi.string().example('Task is already complete').required(),
+    }).label('Error Bad request response'),
+  },
 };
 
 module.exports = { todoPost, todoGet, todoDel, todoPatch };

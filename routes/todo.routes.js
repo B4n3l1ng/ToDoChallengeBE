@@ -106,7 +106,8 @@ const todoRoutes = [
           throw error;
         },
         status: {
-          204: todoDel.success,
+          204: todoDel.response.success,
+          404: todoDel.response.notFound,
         },
       },
     },
@@ -146,7 +147,9 @@ const todoRoutes = [
           throw error;
         },
         status: {
-          202: todoPatch.response,
+          202: todoPatch.response.success,
+          404: todoPatch.response.notFound,
+          400: todoPatch.response.badRequest,
         },
       },
     },
