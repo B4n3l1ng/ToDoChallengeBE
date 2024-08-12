@@ -67,6 +67,9 @@ const init = async () => {
 
   server.route(todoRoutes);
   server.route(authRoutes);
+  server.events.on('response', (request) => {
+    console.log(`${request.method.toUpperCase()} ${request.url.href} --> ${request.response.statusCode}`);
+  });
 
   await server.start();
   console.log(`Server running on ${server.info.uri}`);

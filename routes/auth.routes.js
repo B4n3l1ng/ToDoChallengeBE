@@ -2,8 +2,10 @@ const Boom = require('@hapi/boom');
 const bcrypt = require('bcrypt');
 const config = require('../db/config');
 const knex = require('knex')(config.development);
-const { userPost } = require('../joi/schemas');
+const { userPost, login } = require('../joi/schemas');
 const SALT_ROUNDS = 12;
+const Jwt = require('@hapi/jwt');
+const { failActionPayload, failActionResponse } = require('../controllers/failAction');
 
 const authRoutes = [
   {
@@ -16,15 +18,10 @@ const authRoutes = [
       tags: ['api', 'users'],
       validate: {
         payload: userPost.body,
-        failAction: (request, h, error) => {
-          console.error('Payload validation failed:', error.message);
-          throw Boom.badRequest(`Invalid request payload: ${error.message}`);
-        },
+        failAction: failActionPayload,
       },
       response: {
-        failAction: (request, h, error) => {
-          console.error('Response validation failed:', error.message);
-        },
+        failAction: failActionResponse,
         status: {
           200: userPost.success,
           400: userPost.badRequest,
@@ -46,6 +43,48 @@ const authRoutes = [
         const hashedPassword = bcrypt.hashSync(password, salt);
         const createdUser = await knex('User').insert({ email, password: hashedPassword, name });
         return h.response({ message: 'User registered' }).code(201);
+      } catch (error) {
+        console.log(error);
+        return Boom.internal('Internal server error');
+      }
+    },
+  },
+  {
+    method: 'POST',
+    path: '/login',
+    options: {
+      auth: false,
+      tags: ['api', 'users'],
+      description: 'Login a user',
+      notes: 'Logs in a user with the provided credentials.',
+      validate: {
+        payload: login.body,
+        failAction: failActionPayload,
+      },
+      response: {
+        failAction: failActionResponse,
+        status: {
+          200: login.success,
+          401: login.unauthorized,
+        },
+      },
+    },
+    handler: async (request, h) => {
+      const { email, password } = request.payload;
+      try {
+        const user = await knex('User').where({ email }).first();
+        console.log('user', user);
+        if (!user) {
+          console.log('invalid email');
+          return Boom.unauthorized('Invalid email or password');
+        }
+        const isValid = bcrypt.compareSync(password, user.password);
+        if (!isValid) {
+          console.log('invalid password');
+          return Boom.unauthorized('Invalid email or password');
+        }
+        const token = Jwt.token.generate({ user: user.id }, { key: process.env.TOKEN_SECRET, algorithm: 'HS256' });
+        return h.response({ token }).code(200);
       } catch (error) {
         console.log(error);
         return Boom.internal('Internal server error');

@@ -9,7 +9,15 @@ const todo = Joi.object({
   state: todoState.required(),
   createdAt: Joi.date().required().example('2021-05-12T07:23:45.678Z').description('Date when the task was created.'),
   completedAt: Joi.date().allow(null).required().example('2021-05-13T11:23:45.678Z').description('Date when the task was completed. Can be null.'),
+  creatorId: Joi.string()
+    .required()
+    .example('70a134cd-66a3-42ea-8f60-gc2232ec2c75')
+    .description('Unique identifier of the user that created the task.'),
 }).label('Task object');
+
+const unauthorizedResponse = Joi.object({
+  message: Joi.string().required().example('You must be logged in.').description('Error message.'),
+}).label('Error Unauthorized response');
 
 const todoGet = {
   query: Joi.object({
@@ -27,6 +35,7 @@ const todoGet = {
   response: Joi.object({
     todos: Joi.array().items(todo).label('Array of Tasks'),
   }).label('Task GET request success'),
+  unauthorized: unauthorizedResponse,
 };
 
 const todoPost = {
@@ -36,6 +45,7 @@ const todoPost = {
   response: Joi.object({
     newTodo: todo,
   }).label('Task POST request success'),
+  unauthorized: unauthorizedResponse,
 };
 
 const notFoundResponse = Joi.object({
@@ -48,7 +58,7 @@ const todoDel = {
   parameters: Joi.object({
     id: Joi.string().required().min(36).max(36).example('db28b3f7-13c2-4333-9c13-e6bb1bc5d107').description('Unique identifier of a task to delete.'),
   }),
-  response: { success: undefined, notFound: notFoundResponse },
+  response: { success: undefined, notFound: notFoundResponse, unauthorized: unauthorizedResponse },
 };
 
 const todoPatch = {
@@ -66,6 +76,7 @@ const todoPatch = {
       error: Joi.string().example('Bad Request').required(),
       message: Joi.string().example('Task is already complete').required(),
     }).label('Error Bad request response'),
+    unauthorized: unauthorizedResponse,
   },
 };
 
@@ -95,4 +106,19 @@ const userPost = {
   }).label('User POST bad request'),
 };
 
-module.exports = { todoPost, todoGet, todoDel, todoPatch, userPost };
+const login = {
+  body: Joi.object({
+    email: user.extract('email'),
+    password: user.extract('password'),
+  }).label('Login POST request payload'),
+  success: Joi.object({
+    token: Joi.string().required().description('JSON Web Token containing the information of the logged in user.'),
+  }).label('Login success'),
+  unauthorized: Joi.object({
+    statusCode: Joi.number().example(401).required(),
+    error: Joi.string().example('Unauthorized').required(),
+    message: Joi.string().example('Email or password incorrect.').required(),
+  }).label('Login POST unauthorized'),
+};
+
+module.exports = { todoPost, todoGet, todoDel, todoPatch, userPost, login };

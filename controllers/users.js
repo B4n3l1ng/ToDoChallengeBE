@@ -4,10 +4,10 @@ const knex = require('knex')(config.development);
 const validate = async (artifacts, request, h) => {
   const { decoded } = artifacts;
   try {
-    const existingUser = await knex('Users').where({ username: decoded.payload.username }).first();
+    const existingUser = await knex('User').where({ id: decoded.payload.user }).first();
 
     if (existingUser) {
-      return { isValid: true, credentials: { user: existingUser.username, id: existingUser.id } };
+      return { isValid: true, credentials: { user: existingUser.name, id: existingUser.id } };
     } else {
       return { isValid: false, credentials: null };
     }

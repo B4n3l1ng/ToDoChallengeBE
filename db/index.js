@@ -9,8 +9,9 @@ async function createTables(db) {
       await db.schema.createTable('User', (t) => {
         t.uuid('id').primary().defaultTo(db.raw('uuid_generate_v4()'));
         t.string('email');
-        t.string('password');
+        t.string('password').nullable();
         t.string('name');
+        t.string('oauth_provider').nullable(), t.string('oauth_id').nullable();
       });
       console.log('User table created successfully.');
     }
