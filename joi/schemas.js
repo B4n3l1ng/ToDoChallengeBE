@@ -69,4 +69,30 @@ const todoPatch = {
   },
 };
 
-module.exports = { todoPost, todoGet, todoDel, todoPatch };
+const user = Joi.object({
+  id: Joi.string().min(36).max(36).required().example('70a134cd-66a3-42ea-8f60-cc2202ec2c71').description('Unique identifier for User entry.'),
+  name: Joi.string().required().example('John Smith').description("User's name. No need to be unique."),
+  email: Joi.string()
+    .email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } })
+    .example('johnsmith@gmail.com')
+    .description('Unique email provided by the user.'),
+  password: Joi.string().required().description('Password provided by the user. Minimum of 6 characters, 1 number and one special character.'),
+}).label('User object');
+
+const userPost = {
+  body: Joi.object({
+    email: user.extract('email'),
+    password: user.extract('password'),
+    name: user.extract('name'),
+  }).label('User POST payload'),
+  success: Joi.object({
+    message: Joi.string().required().description('Success message').example('User registered'),
+  }).label('User POST request success'),
+  badRequest: Joi.object({
+    statusCode: Joi.number().example(400).required(),
+    error: Joi.string().example('Bad Request').required(),
+    message: Joi.string().example('Email is not a valid email.').required(),
+  }).label('User POST bad request'),
+};
+
+module.exports = { todoPost, todoGet, todoDel, todoPatch, userPost };

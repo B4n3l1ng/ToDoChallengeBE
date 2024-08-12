@@ -4,6 +4,16 @@ const knex = require('knex');
 async function createTables(db) {
   try {
     const toDoTableExists = await db.schema.hasTable('ToDo');
+    const userTableExists = await db.schema.hasTable('User');
+    if (!userTableExists) {
+      await db.schema.createTable('User', (t) => {
+        t.uuid('id').primary().defaultTo(db.raw('uuid_generate_v4()'));
+        t.string('email');
+        t.string('password');
+        t.string('name');
+      });
+      console.log('User table created successfully.');
+    }
     if (!toDoTableExists) {
       await db.schema.createTable('ToDo', (t) => {
         t.uuid('id').primary().defaultTo(db.raw('uuid_generate_v4()'));
@@ -11,8 +21,9 @@ async function createTables(db) {
         t.enu('state', ['INCOMPLETE', 'COMPLETE']).defaultTo('INCOMPLETE');
         t.timestamp('createdAt').defaultTo(db.fn.now());
         t.timestamp('completedAt').nullable();
+        t.uuid('creatorId').references('id').inTable('User').onDelete('CASCADE').onUpdate('CASCADE').notNullable();
       });
-      console.log('Table created successfully');
+      console.log('Todo table created successfully.');
     }
   } catch (error) {
     throw error;
