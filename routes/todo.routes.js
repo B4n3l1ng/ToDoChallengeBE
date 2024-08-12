@@ -67,6 +67,7 @@ const todoRoutes = [
     },
     handler: async (request, h) => {
       const { filter = 'ALL', orderBy = 'CREATED_AT' } = request.query;
+      console.log({ filter, orderBy });
       const databaseFilter = {};
       if (filter === 'INCOMPLETE') {
         databaseFilter.state = 'INCOMPLETE';
@@ -78,7 +79,7 @@ const todoRoutes = [
           .select()
           .from('ToDo')
           .where(databaseFilter)
-          .orderBy(orderBy === 'CREATED_AT' ? 'createdAt' : orderBy === 'COMPLETED_AT' ? 'completedAt' : 'description', 'asc');
+          .orderBy(orderBy === 'DESCRIPTION' ? 'description' : orderBy === 'COMPLETED_AT' ? 'completedAt' : 'createdAt', 'asc');
         return h.response({ todos }).code(200);
       } catch (error) {
         console.log(error);
@@ -161,7 +162,7 @@ const todoRoutes = [
         const taskExists = await knex('ToDo').where('id', id).first();
         if (taskExists) {
           if (taskExists.state === 'COMPLETE' && payload.description) {
-            return Boom.badRequest('Task is already complete');
+            return Boom.badRequest(`You can't change the description of a completed task.`);
           }
           const [updatedTask] = await knex('ToDo')
             .where('id', id)
