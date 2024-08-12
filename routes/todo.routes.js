@@ -2,6 +2,7 @@ const { todoPost, todoGet, todoDel, todoPatch } = require('../joi/schemas');
 const config = require('../db/config');
 const knex = require('knex')(config.development);
 const Boom = require('@hapi/boom');
+const { failActionPayload, failActionResponse, failActionQuery, failActionParams } = require('../controllers/failAction');
 
 const todoRoutes = [
   {
@@ -13,31 +14,31 @@ const todoRoutes = [
       tags: ['api', 'todos'],
       validate: {
         payload: todoPost.request,
-        failAction: (request, h, error) => {
-          console.error('Payload validation failed:', error.message);
-          throw Boom.badRequest(`Invalid request payload: ${error.message}`);
-        },
+        failAction: failActionPayload,
       },
       response: {
-        failAction: (request, h, error) => {
-          console.error('Response validation failed:', error.message);
-          throw error;
-        },
+        failAction: failActionResponse,
         status: {
           201: todoPost.response,
+          401: todoPost.unauthorized,
         },
       },
     },
     handler: async (request, h) => {
       const { description } = request.payload;
+      const userId = request.auth.credentials.id;
       try {
+        const user = await knex('User').where({ id: userId }).first();
+        if (!user) {
+          return Boom.unauthorized('You must be logged in.');
+        }
         const newTodo = await knex('ToDo')
-          .insert({ description, state: 'INCOMPLETE', createdAt: knex.fn.now(), completedAt: null })
+          .insert({ description, state: 'INCOMPLETE', createdAt: knex.fn.now(), completedAt: null, creatorId: userId })
           .returning(['id', 'description', 'state', 'createdAt', 'completedAt']);
         return h.response({ newTodo: newTodo[0] }).code(201);
       } catch (error) {
         console.log(error);
-        throw Boom.internal('Internal server erroror');
+        throw Boom.internal('Internal server error');
       }
     },
   },
@@ -50,24 +51,19 @@ const todoRoutes = [
       tags: ['api', 'todos'],
       validate: {
         query: todoGet.query,
-        failAction: (request, h, error) => {
-          console.error('Query validation failed:', error.message);
-          throw Boom.badRequest(`Invalid request query: ${error.message}`);
-        },
+        failAction: failActionQuery,
       },
       response: {
-        failAction: (request, h, error) => {
-          console.error('Response validation failed:', error.message);
-          throw error;
-        },
+        failAction: failActionResponse,
         status: {
           200: todoGet.response,
+          401: todoGet.unauthorized,
         },
       },
     },
     handler: async (request, h) => {
       const { filter = 'ALL', orderBy = 'CREATED_AT' } = request.query;
-      console.log({ filter, orderBy });
+      const userId = request.auth.credentials.id;
       const databaseFilter = {};
       if (filter === 'INCOMPLETE') {
         databaseFilter.state = 'INCOMPLETE';
@@ -75,9 +71,13 @@ const todoRoutes = [
         databaseFilter.state = 'COMPLETE';
       }
       try {
-        const todos = await knex
-          .select()
-          .from('ToDo')
+        const existingUser = await knex('User').where({ id: userId }).first();
+        if (!existingUser) {
+          return Boom.unauthorized('You must be logged in.');
+        } else {
+          databaseFilter.creatorId = userId;
+        }
+        const todos = await knex('ToDo')
           .where(databaseFilter)
           .orderBy(orderBy === 'DESCRIPTION' ? 'description' : orderBy === 'COMPLETED_AT' ? 'completedAt' : 'createdAt', 'asc');
         return h.response({ todos }).code(200);
@@ -96,26 +96,26 @@ const todoRoutes = [
       tags: ['api', 'todo'],
       validate: {
         params: todoDel.parameters,
-        failAction: (request, h, error) => {
-          console.error('Parameters validation failed:', error.message);
-          throw Boom.badRequest(`Invalid request parameters: ${error.message}`);
-        },
+        failAction: failActionParams,
       },
       response: {
-        failAction: (request, h, error) => {
-          console.error('Response validation failed:', error.message);
-          throw error;
-        },
+        failAction: failActionResponse,
         status: {
           204: todoDel.response.success,
+          401: todoDel.response.unauthorized,
           404: todoDel.response.notFound,
         },
       },
     },
     handler: async (request, h) => {
       const { id } = request.params;
+      const userId = request.auth.credentials.id;
       try {
-        const taskExists = await knex('ToDo').where('id', id).first();
+        const existingUser = await knex('User').where({ id: userId }).first();
+        if (!existingUser) {
+          return Boom.unauthorized('You must be logged in.');
+        }
+        const taskExists = await knex('ToDo').where({ id, creatorId: userId }).first();
         if (taskExists) {
           await knex('ToDo').where('id', id).first().del();
           return h.response().code(204);
@@ -137,20 +137,15 @@ const todoRoutes = [
       tags: ['api', 'todo'],
       validate: {
         payload: todoPatch.body,
-        failAction: (request, h, error) => {
-          console.error('Payload validation failed:', error.message);
-          throw Boom.badRequest(`Invalid request payload: ${error.message}`);
-        },
+        failAction: failActionPayload,
       },
       response: {
-        failAction: (request, h, error) => {
-          console.error('Response validation failed:', error.message);
-          throw error;
-        },
+        failAction: failActionResponse,
         status: {
           202: todoPatch.response.success,
           404: todoPatch.response.notFound,
           400: todoPatch.response.badRequest,
+          401: todoPatch.response.unauthorized,
         },
       },
     },
@@ -158,19 +153,25 @@ const todoRoutes = [
     handler: async (request, h) => {
       const { id } = request.params;
       const { payload } = request;
+      const userId = request.auth.credentials.id;
       try {
-        const taskExists = await knex('ToDo').where('id', id).first();
+        const existingUser = await knex('User').where({ id: userId }).first();
+        if (!existingUser) {
+          return Boom.unauthorized('You must be logged in.');
+        }
+        const taskExists = await knex('ToDo').where({ id, creatorId: userId }).first();
         if (taskExists) {
           if (taskExists.state === 'COMPLETE' && payload.description) {
             return Boom.badRequest(`You can't change the description of a completed task.`);
           }
           const [updatedTask] = await knex('ToDo')
-            .where('id', id)
+            .where({ id, creatorId: userId })
             .first()
             .update({ ...payload, completedAt: payload.state === 'COMPLETE' ? knex.fn.now() : null }, [
               'id',
               'state',
               'description',
+              'creatorId',
               'createdAt',
               'completedAt',
             ]);
