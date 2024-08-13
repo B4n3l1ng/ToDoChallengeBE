@@ -121,4 +121,16 @@ const login = {
   }).label('Login POST unauthorized'),
 };
 
-module.exports = { todoPost, todoGet, todoDel, todoPatch, userPost, login };
+const logoutResponse = Joi.object({
+  message: Joi.string().required().example('Logged out successfully'),
+}).label('Logout response.');
+
+const meGet = Joi.object({
+  user: Joi.object({
+    id: user.extract('id'),
+    email: user.extract('email'),
+    name: user.extract('name'),
+  }),
+}).label('GET me response');
+
+module.exports = { todoPost, todoGet, todoDel, todoPatch, userPost, login, logoutResponse, meGet };

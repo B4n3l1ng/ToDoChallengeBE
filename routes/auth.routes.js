@@ -2,10 +2,11 @@ const Boom = require('@hapi/boom');
 const bcrypt = require('bcrypt');
 const config = require('../db/config');
 const knex = require('knex')(config.development);
-const { userPost, login } = require('../joi/schemas');
+const { userPost, login, logoutResponse, unauthorizedResponse, meGet } = require('../joi/schemas');
 const SALT_ROUNDS = 12;
 const Jwt = require('@hapi/jwt');
 const { failActionPayload, failActionResponse } = require('../controllers/failAction');
+const { blacklistToken } = require('../redis/redis');
 
 const authRoutes = [
   {
@@ -44,7 +45,7 @@ const authRoutes = [
         const createdUser = await knex('User').insert({ email, password: hashedPassword, name });
         return h.response({ message: 'User registered' }).code(201);
       } catch (error) {
-        console.log(error);
+        console.error(error);
         return Boom.internal('Internal server error');
       }
     },
@@ -73,7 +74,6 @@ const authRoutes = [
       const { email, password } = request.payload;
       try {
         const user = await knex('User').where({ email }).first();
-        console.log('user', user);
         if (!user) {
           console.log('invalid email');
           return Boom.unauthorized('Invalid email or password');
@@ -88,6 +88,57 @@ const authRoutes = [
       } catch (error) {
         console.log(error);
         return Boom.internal('Internal server error');
+      }
+    },
+  },
+  {
+    method: 'POST',
+    path: '/logout',
+    options: {
+      tags: ['api', 'users'],
+      description: 'Logs out a user.',
+      notes: 'Blacklists the JWT passed in the headers, and informs the frontend to delete it from local storage.',
+      response: {
+        failAction: failActionResponse,
+        status: {
+          200: logoutResponse,
+          401: unauthorizedResponse,
+        },
+      },
+    },
+    handler: async (request, h) => {
+      try {
+        const token = request.auth.artifacts.token;
+        await blacklistToken(token);
+        return h.response({ message: 'Logged out successfully' }).code(200);
+      } catch (error) {
+        console.error('Logout error:', error);
+        return Boom.internal('Internal server error');
+      }
+    },
+  },
+  {
+    method: 'GET',
+    path: '/me',
+    options: {
+      tags: ['api', 'users'],
+      description: 'Returs the details of the authenticated user',
+      response: {
+        failAction: failActionResponse,
+        status: {
+          200: meGet,
+          401: unauthorizedResponse,
+        },
+      },
+    },
+    handler: async (request, h) => {
+      const userId = request.auth.credentials.id;
+      try {
+        const existingUser = await knex('User').where({ id: userId }).first().returning(['id', 'name', 'email']);
+        return h.response({ user: existingUser }).code(200);
+      } catch (error) {
+        console.error(error);
+        Boom.internal('Internal Server Error');
       }
     },
   },
