@@ -33,6 +33,7 @@ const init = async () => {
     tags: [
       { name: 'todos', description: 'Multiple task data' },
       { name: 'todo', description: 'Single task data' },
+      { name: 'users', description: 'Authentication related data' },
     ],
   };
 

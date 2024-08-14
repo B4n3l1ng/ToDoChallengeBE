@@ -2,7 +2,7 @@ const Boom = require('@hapi/boom');
 const bcrypt = require('bcrypt');
 const config = require('../db/config');
 const knex = require('knex')(config.development);
-const { userPost, login, logoutResponse, unauthorizedResponse, meGet } = require('../joi/schemas');
+const { userPost, login, logoutResponse, unauthorizedResponse, meGet, mePatch } = require('../joi/validation');
 const SALT_ROUNDS = 12;
 const Jwt = require('@hapi/jwt');
 const { failActionPayload, failActionResponse } = require('../controllers/failAction');
@@ -42,7 +42,7 @@ const authRoutes = [
         }
         const salt = bcrypt.genSaltSync(SALT_ROUNDS);
         const hashedPassword = bcrypt.hashSync(password, salt);
-        const createdUser = await knex('User').insert({ email, password: hashedPassword, name });
+        await knex('User').insert({ email, password: hashedPassword, name });
         return h.response({ message: 'User registered' }).code(201);
       } catch (error) {
         console.error(error);
@@ -56,7 +56,7 @@ const authRoutes = [
     options: {
       auth: false,
       tags: ['api', 'users'],
-      description: 'Login a user',
+      description: 'Login a user.',
       notes: 'Logs in a user with the provided credentials.',
       validate: {
         payload: login.body,
@@ -75,7 +75,6 @@ const authRoutes = [
       try {
         const user = await knex('User').where({ email }).first();
         if (!user) {
-          console.log('invalid email');
           return Boom.unauthorized('Invalid email or password');
         }
         const isValid = bcrypt.compareSync(password, user.password);
@@ -101,8 +100,8 @@ const authRoutes = [
       response: {
         failAction: failActionResponse,
         status: {
-          200: logoutResponse,
-          401: unauthorizedResponse,
+          200: logoutResponse.success,
+          401: logoutResponse.unauthorized,
         },
       },
     },
@@ -122,23 +121,76 @@ const authRoutes = [
     path: '/me',
     options: {
       tags: ['api', 'users'],
-      description: 'Returs the details of the authenticated user',
+      description: 'Returns the details of the authenticated user.',
       response: {
         failAction: failActionResponse,
         status: {
-          200: meGet,
-          401: unauthorizedResponse,
+          200: meGet.success,
+          401: meGet.unauthorized,
         },
       },
     },
     handler: async (request, h) => {
       const userId = request.auth.credentials.id;
       try {
-        const existingUser = await knex('User').where({ id: userId }).first().returning(['id', 'name', 'email']);
+        const existingUser = await knex('User').where({ id: userId }).first().select(['id', 'name', 'email']);
         return h.response({ user: existingUser }).code(200);
       } catch (error) {
         console.error(error);
-        Boom.internal('Internal Server Error');
+        return Boom.internal('Internal Server Error');
+      }
+    },
+  },
+  {
+    method: 'PATCH',
+    path: '/me',
+    options: {
+      tags: ['api', 'users'],
+      description: 'Changes user details.',
+      validate: {
+        failAction: failActionPayload,
+        payload: mePatch.payload,
+      },
+      response: {
+        failAction: failActionResponse,
+        status: {
+          202: mePatch.success,
+          400: mePatch.badRequest,
+          401: mePatch.unauthorized,
+          404: mePatch.notFound,
+        },
+      },
+    },
+    handler: async (request, h) => {
+      const userId = request.auth.credentials.id;
+      const { currentPassword, newPassword, newName } = request.payload;
+      try {
+        const existingUser = await knex('User').where({ id: userId }).first().select(['name', 'password']);
+        if (!existingUser) {
+          return Boom.notFound('User not found.');
+        }
+        const passwordMatch = bcrypt.compareSync(currentPassword, existingUser.password);
+        console.log('db password', existingUser.password);
+        if (!passwordMatch) {
+          return Boom.unauthorized('Incorrect password.');
+        }
+        const newDetails = {};
+        if (newName) {
+          newDetails.name = newName;
+        }
+        if (newPassword) {
+          if (/^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{6,})/.test(newPassword)) {
+            const salt = bcrypt.genSaltSync(SALT_ROUNDS);
+            newDetails.password = bcrypt.hashSync(newPassword, salt);
+          } else {
+            return Boom.badRequest('Password needs to be atleast 6 characters long, use one number and one special character.');
+          }
+        }
+        await knex('User').where({ id: userId }).update(newDetails);
+        return h.response({ message: 'User update successful.' }).code(202);
+      } catch (error) {
+        console.error(error);
+        return Boom.internal('Internal Server Error');
       }
     },
   },

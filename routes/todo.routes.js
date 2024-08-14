@@ -1,4 +1,4 @@
-const { todoPost, todoGet, todoDel, todoPatch } = require('../joi/schemas');
+const { todoPost, todoGet, todoDel, todoPatch } = require('../joi/validation');
 const config = require('../db/config');
 const knex = require('knex')(config.development);
 const Boom = require('@hapi/boom');
