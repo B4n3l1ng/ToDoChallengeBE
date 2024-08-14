@@ -18,7 +18,6 @@ const todoGet = {
   response: Joi.object({
     todos: Joi.array().items(todo).label('Array of Tasks'),
   }).label('/todos GET success'),
-  unauthorized: unauthorizedResponse,
 };
 
 // POST route on path /todos
@@ -58,13 +57,8 @@ const todoPatch = {
 
 //POST Route on path /users
 const userPost = {
-  body: user
-    .keys({
-      email: user.extract('email'),
-      password: user.extract('password'),
-      name: user.extract('name'),
-    })
-    .label('/users POST payload'),
+  body: Joi.object({ email: user.extract('email'), password: user.extract('password'), name: user.extract('name') })
+  .label('/users POST payload'),
   success: Joi.object({
     message: Joi.string().required().description('Success message').example('User registered'),
   }).label('/users POST success'),
@@ -73,14 +67,20 @@ const userPost = {
 
 //POST route on path /login
 const login = {
-  body: user
-    .keys({
-      email: user.extract('email'),
-      password: user.extract('password'),
-    })
-    .label('/login POST payload'),
+  body: Joi.object({
+    email: user.extract('email'),
+    password: user.extract('password'),
+  }).label('/login POST payload'),
   success: Joi.object({
     token: Joi.string().required().description('JWT for the logged-in user.'),
+    user: Joi.object({
+      id: uuid.required(),
+      name: Joi.string().required().example('John Smith').description("User's name."),
+      email: Joi.string()
+        .email({ minDomainSegments: 2, tlds: { allow: ['com', 'net'] } })
+        .example('johnsmith@gmail.com')
+        .description("User's unique email."),
+    }).label('User info'),
   }).label('/login POST success'),
   unauthorized: unauthorizedResponse,
 };
@@ -96,10 +96,10 @@ const logoutResponse = {
 //GET Route on path /me
 const meGet = {
   success: Joi.object({
-    user: user.keys({
-      id: user.extract('id'),
+    user: Joi.object({
       email: user.extract('email'),
       name: user.extract('name'),
+      id: user.extract('id'),
     }),
   }).label('/me GET success'),
   unauthorized: unauthorizedResponse,

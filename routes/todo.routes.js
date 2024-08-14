@@ -3,6 +3,7 @@ const config = require('../db/config');
 const knex = require('knex')(config.development);
 const Boom = require('@hapi/boom');
 const { failActionPayload, failActionResponse, failActionQuery, failActionParams } = require('../controllers/failAction');
+const { unauthorizedResponse } = require('../joi/schemas');
 
 const todoRoutes = [
   {
@@ -34,7 +35,7 @@ const todoRoutes = [
         }
         const newTodo = await knex('ToDo')
           .insert({ description, state: 'INCOMPLETE', createdAt: knex.fn.now(), completedAt: null, creatorId: userId })
-          .returning(['id', 'description', 'state', 'createdAt', 'completedAt']);
+          .returning(['id', 'description', 'state', 'createdAt', 'completedAt', 'creatorId']);
         return h.response({ newTodo: newTodo[0] }).code(201);
       } catch (error) {
         console.log(error);
@@ -57,7 +58,7 @@ const todoRoutes = [
         failAction: failActionResponse,
         status: {
           200: todoGet.response,
-          401: todoGet.unauthorized,
+          401: unauthorizedResponse,
         },
       },
     },
@@ -72,6 +73,7 @@ const todoRoutes = [
       }
       try {
         const existingUser = await knex('User').where({ id: userId }).first();
+        console.log('USER', existingUser);
         if (!existingUser) {
           return Boom.unauthorized('You must be logged in.');
         } else {
@@ -80,6 +82,7 @@ const todoRoutes = [
         const todos = await knex('ToDo')
           .where(databaseFilter)
           .orderBy(orderBy === 'DESCRIPTION' ? 'description' : orderBy === 'COMPLETED_AT' ? 'completedAt' : 'createdAt', 'asc');
+        console.log({ todos });
         return h.response({ todos }).code(200);
       } catch (error) {
         console.log(error);
@@ -143,9 +146,9 @@ const todoRoutes = [
         failAction: failActionResponse,
         status: {
           202: todoPatch.response.success,
-          404: todoPatch.response.notFound,
           400: todoPatch.response.badRequest,
           401: todoPatch.response.unauthorized,
+          404: todoPatch.response.notFound,
         },
       },
     },

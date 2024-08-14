@@ -73,7 +73,7 @@ const authRoutes = [
     handler: async (request, h) => {
       const { email, password } = request.payload;
       try {
-        const user = await knex('User').where({ email }).first();
+        const user = await knex('User').where({ email }).first().select(['id', 'name', 'email', 'password']);
         if (!user) {
           return Boom.unauthorized('Invalid email or password');
         }
@@ -82,8 +82,9 @@ const authRoutes = [
           console.log('invalid password');
           return Boom.unauthorized('Invalid email or password');
         }
+        const userInfo = { name: user.name, email: user.email, id: user.id };
         const token = Jwt.token.generate({ user: user.id }, { key: process.env.TOKEN_SECRET, algorithm: 'HS256' });
-        return h.response({ token }).code(200);
+        return h.response({ token, user: userInfo }).code(200);
       } catch (error) {
         console.log(error);
         return Boom.internal('Internal server error');
@@ -136,7 +137,7 @@ const authRoutes = [
         const existingUser = await knex('User').where({ id: userId }).first().select(['id', 'name', 'email']);
         return h.response({ user: existingUser }).code(200);
       } catch (error) {
-        console.error(error);
+        console.error('Error in /me handler:', error); // Log the specific error
         return Boom.internal('Internal Server Error');
       }
     },

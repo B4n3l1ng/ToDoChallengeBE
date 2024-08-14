@@ -7,17 +7,21 @@ const uuid = Joi.string().length(36).example('70a134cd-66a3-42ea-8f60-cc2202ec2c
 const date = Joi.date().example('2021-05-12T07:23:45.678Z').description('Timestamp');
 
 // Reusable Error Response
-const errorResponse = (statusCode, message) =>
+const errorResponse = (statusCode, message, exampleMessage) =>
   Joi.object({
     statusCode: Joi.number().example(statusCode).required(),
     error: Joi.string().example(message).required(),
-    message: Joi.string().example(`${message} message.`).required(),
-  }).label(`${message} response`);
+    message: Joi.string()
+      .example(exampleMessage || `${message} message.`)
+      .required(),
+    attributes: Joi.any().optional(),
+  })
+  .label(`${message} Response`);
 
 // Specific Error Responses
-const unauthorizedResponse = errorResponse(401, 'Unauthorized');
-const notFoundResponse = errorResponse(404, 'Not Found');
-const badRequestResponse = errorResponse(400, 'Bad Request');
+const unauthorizedResponse = errorResponse(401, 'Unauthorized', 'Missing authentication').label('Unauthorized Response');
+const notFoundResponse = errorResponse(404, 'Not Found', 'Task or user not found').label('Not Found Response');
+const badRequestResponse = errorResponse(400, 'Bad Request', 'Invalid input or parameters').label('Bad Request Response');
 
 // Reusable Todo Schema Parts
 const todoState = Joi.string().valid('INCOMPLETE', 'COMPLETE').example('COMPLETE').description('Task state').label('Task state');
