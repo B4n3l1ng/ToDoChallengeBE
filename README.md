@@ -24,7 +24,7 @@
 ## Prerequisites
 
 - **Node.js** (v14+)
-- **Redis** server installed and running
+- **Redis** server installed and running or Redis Labs connection
 
 ## Setup Instructions
 
