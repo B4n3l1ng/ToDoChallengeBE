@@ -1,10 +1,10 @@
 require('dotenv').config();
 const Hapi = require('@hapi/hapi');
-const Inert = require('@hapi/inert');
-const Vision = require('@hapi/vision');
 const Jwt = require('@hapi/jwt');
 const HapiSwagger = require('hapi-swagger');
 const Pack = require('./package');
+const inert = require('@hapi/inert');
+const vision = require('@hapi/vision');
 const laabr = require('laabr');
 const validate = require('./controllers/users');
 require('./db/index.js');
@@ -13,12 +13,13 @@ const todoRoutes = require('./routes/todo.routes');
 const authRoutes = require('./routes/auth.routes');
 
 const init = async () => {
+  // create the server using Hapi with the options passed in env
   const server = Hapi.server({
     port: process.env.PORT || 5005,
     host: process.env.HOST || 'localhost',
     routes: {
       cors: {
-        origin: [process.env.FRONTEND_URL],
+        origin: [process.env.FRONTEND_URL], // sets up CORS to only accept responses from the URL passed in the .env
       },
     },
   });
@@ -28,8 +29,8 @@ const init = async () => {
       title: 'ToDo API Documentation',
       version: Pack.version,
     },
-    documentationPath: '/docs',
-    grouping: 'tags',
+    documentationPath: '/docs', // documentation with be served on /docs path
+    grouping: 'tags', // groups documentation by the route tags
     tags: [
       { name: 'todos', description: 'Multiple task data' },
       { name: 'todo', description: 'Single task data' },
@@ -38,45 +39,52 @@ const init = async () => {
   };
 
   await server.register([
+    //registed the plugins necessary
+    inert, // necessary plugin for swagger
+    vision, // necessary plugin for swagger
     {
-      plugin: laabr,
+      plugin: laabr, // logger
       options: {},
     },
-    Inert,
-    Vision,
     {
-      plugin: HapiSwagger,
+      plugin: HapiSwagger, // swagger documentation plugin
       options: swaggerOptions,
     },
-    Jwt,
+    Jwt, // JWT plugin
   ]);
 
   server.auth.strategy('jwt', 'jwt', {
+    // JWT auth configuration
     keys: process.env.TOKEN_SECRET,
     verify: {
-      aud: false,
-      iss: false,
-      sub: false,
-      nbf: true,
-      maxAgeSec: 14400,
-      timeSkewSec: 15,
+      aud: false, // no audiance verification
+      iss: false, // no issuer verification
+      sub: false, // no subject verification
+      nbf: true, // not before verification enabled
+      maxAgeSec: 14400, // maximum token age
+      timeSkewSec: 15, // allows for 15 second difference in nbf verification
     },
     validate,
   });
 
-  server.auth.default('jwt');
+  server.auth.default('jwt'); // sets JWT as the default auth strategy
 
-  server.route(todoRoutes);
-  server.route(authRoutes);
-  server.events.on('response', (request) => {
-    console.log(`${request.method.toUpperCase()} ${request.url.href} --> ${request.response.statusCode}`);
+  server.route({
+    method: 'GET',
+    path: '/',
+    handler: (response, h) => {
+      return h.redirect('/docs');
+    },
   });
+  server.route(todoRoutes); // binds the todoRoutes to the server
+  server.route(authRoutes); // binds the authRoutes to the server
 
-  await server.start();
+  await server.start(); // start the server
   console.log(`Server running on ${server.info.uri}`);
 };
 
 process.on('unhandledRejection', (err) => {
+  // on any unhandled rejection, log the error and exit the process
   console.log(err);
   process.exit(1);
 });

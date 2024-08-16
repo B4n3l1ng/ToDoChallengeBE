@@ -15,8 +15,7 @@ const errorResponse = (statusCode, message, exampleMessage) =>
       .example(exampleMessage || `${message} message.`)
       .required(),
     attributes: Joi.any().optional(),
-  })
-  .label(`${message} Response`);
+  });
 
 // Specific Error Responses
 const unauthorizedResponse = errorResponse(401, 'Unauthorized', 'Missing authentication').label('Unauthorized Response');
