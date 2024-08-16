@@ -2,20 +2,22 @@
 
 ## Overview
 
-**ToDoChallengeBE** is the backend service for a to-do list application, built using Node.js, Hapi, and Redis. It provides a RESTful API to manage tasks, allowing users to create, update, delete, and retrieve to-do items.
+**ToDoChallengeBE** is the backend service for a to-do list application, built using Node.js, Hapi, Knex, Postgresql database and Redis. It provides a RESTful API to manage tasks, allowing users to create, update, delete, and retrieve to-do items.
 
 ## Features
 
 - **Task Management**: Create, read, update, and delete tasks.
-- **Redis Integration**: Caching and data storage with Redis.
+- **Database Integration**: Using Knex.js and a Postgresql connection.
+- **Redis Integration**: Caching and data storage with Redis, JWT blacklisting.
 - **Validation**: Input validation with Joi.
 - **Environment Config**: Easy configuration using environment variables.
 
 ## Technologies Used
 
 - **Node.js**
-- **Express**
-- **Redis**
+- **Hapi.js**
+- **Knex.js** for Postgresql database connection and query building
+- **Redis** for JWT blacklisting
 - **Joi** for schema validation
 - **Dotenv** for environment management
 
